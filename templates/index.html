@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+
+        .logo span {
+            color: #fff;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff, #0099cc);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757, #ff3838);
+            color: #fff;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2ed573, #26b55f);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+
+        .auth-box {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .auth-box h2 {
+            margin-bottom: 10px;
+            color: #00d9ff;
+        }
+
+        .auth-box p {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 30px;
+        }
+
+        .auth-box input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .auth-box input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .auth-box .btn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .error-msg {
+            color: #ff4757;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .main-app {
+            display: none;
+        }
+
+        .main-app.active {
+            display: block;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .password-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .password-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .password-card:hover {
+            transform: translateY(-5px);
+            border-color: #00d9ff;
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.15);
+        }
+
+        .password-card h3 {
+            color: #00d9ff;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .password-card .field {
+            margin-bottom: 12px;
+        }
+
+        .password-card .field label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .password-card .field-value {
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .password-card .password-value {
+            font-family: 'Courier New', monospace;
+            color: #2ed573;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card-actions .btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .modal-content h3 {
+            color: #00d9ff;
+            margin-bottom: 20px;
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 15px;
+        }
+
+        .modal-content label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            transform: translateX(150%);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #2ed573, #26b55f);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ff4757, #ff3838);
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .generated-password {
+            font-size: 1.4rem;
+            font-family: 'Courier New', monospace;
+            color: #2ed573;
+            text-align: center;
+            padding: 20px;
+            background: rgba(46, 213, 115, 0.1);
+            border-radius: 10px;
+            margin: 15px 0;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Auth Screen -->
+        <div id="authContainer" class="auth-container">
+            <div class="auth-box">
+                <h2 id="authTitle">🔐 Password Manager</h2>
+                <p id="authSubtitle">Loading...</p>
+                <div id="authForm">
+                    <input type="password" id="passwordInput" placeholder="Enter master password">
+                    <button class="btn btn-primary" onclick="handleSubmit()" id="authBtn">Unlock Vault</button>
+                    <p class="error-msg" id="authError"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="mainApp" class="main-app">
+            <header>
+                <div class="logo">🔐 <span>Password Manager</span></div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="openChangePasswordModal()">🔒 Change Password</button>
+                    <button class="btn btn-danger" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="toolbar">
+                <input type="text" class="search-box" placeholder="Search passwords..." oninput="searchPasswords(this.value)">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Add Password</button>
+                <button class="btn btn-success" onclick="generatePassword()">🔑 Generate</button>
+            </div>
+
+            <div id="passwordGrid" class="password-grid"></div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Add Password</h3>
+            <div class="form-group">
+                <label>Website</label>
+                <input type="text" id="modalSite" placeholder="example.com">
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="modalUsername" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="text" id="modalPassword" placeholder="Enter password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="savePassword()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate Password Modal -->
+    <div id="generateModal" class="modal">
+        <div class="modal-content">
+            <h3>🔑 Generated Password</h3>
+            <div class="generated-password" id="generatedPassword"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeGenerateModal()">Close</button>
+                <button class="btn btn-primary" onclick="copyGenerated()">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <h3>🔒 Change Master Password</h3>
+            <div class="form-group">
+                <label>Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm new password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitChangePassword()">Change Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let editingIndex = -1;
+        let isLoggedIn = false;
+
+        // Check if vault exists
+        async function checkInit() {
+            const res = await fetch('/api/init');
+            const data = await res.json();
+            document.getElementById('authSubtitle').textContent = data.exists
+                ? 'Enter your master password to unlock'
+                : 'Create a master password to secure your vault';
+            document.getElementById('authBtn').textContent = data.exists
+                ? 'Unlock Vault'
+                : 'Create Vault';
+        }
+
+        async function handleSubmit() {
+            const password = document.getElementById('passwordInput').value;
+            if (!password) {
+                showToast('Please enter a password', 'error');
+                return;
+            }
+
+            const exists = document.getElementById('authBtn').textContent === 'Unlock Vault';
+            const endpoint = exists ? '/api/login' : '/api/setup';
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                isLoggedIn = true;
+                document.getElementById('authContainer').style.display = 'none';
+                document.getElementById('mainApp').classList.add('active');
+                loadPasswords();
+            } else {
+                document.getElementById('authError').textContent = data.error;
+            }
+        }
+
+        async function loadPasswords() {
+            const res = await fetch('/api/passwords');
+            if (res.status === 401) {
+                location.reload();
+                return;
+            }
+            const passwords = await res.json();
+            renderPasswords(passwords);
+        }
+
+        function renderPasswords(passwords) {
+            const grid = document.getElementById('passwordGrid');
+            if (passwords.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <h3>No passwords yet</h3>
+                        <p>Click "Add Password" to store your first credential</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = passwords.map((p, i) => `
+                <div class="password-card">
+                    <h3>${escapeHtml(p.site)}</h3>
+                    <div class="field">
+                        <label>Username</label>
+                        <div class="field-value">
+                            ${escapeHtml(p.username)}
+                            <button class="copy-btn" onclick="copyText('${escapeHtml(p.username)}')">Copy</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <div class="field-value">
+                            <span class="password-value">${'•'.repeat(Math.min(p.password.length, 12))}</span>
+                            <button class="copy-btn" onclick="copyText('${p.password}')">Copy</button>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="editPassword(${i})">Edit</button>
+                        <button class="btn btn-danger" onclick="deletePassword(${i})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddModal() {
+            editingIndex = -1;
+            document.getElementById('modalTitle').textContent = 'Add Password';
+            document.getElementById('modalSite').value = '';
+            document.getElementById('modalUsername').value = '';
+            document.getElementById('modalPassword').value = '';
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function savePassword() {
+            const site = document.getElementById('modalSite').value;
+            const username = document.getElementById('modalUsername').value;
+            const password = document.getElementById('modalPassword').value;
+
+            if (!site || !username || !password) {
+                showToast('All fields are required', 'error');
+                return;
+            }
+
+            const method = editingIndex >= 0 ? 'PUT' : 'POST';
+            const url = editingIndex >= 0 ? `/api/passwords/${editingIndex}` : '/api/passwords';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ site, username, password })
+            });
+
+            if (res.ok) {
+                showToast(editingIndex >= 0 ? 'Password updated!' : 'Password added!', 'success');
+                closeModal();
+                loadPasswords();
+            }
+        }
+
+        function editPassword(index) {
+            editingIndex = index;
+            fetch('/api/passwords')
+                .then(r => r.json())
+                .then(passwords => {
+                    const p = passwords[index];
+                    document.getElementById('modalTitle').textContent = 'Edit Password';
+                    document.getElementById('modalSite').value = p.site;
+                    document.getElementById('modalUsername').value = p.username;
+                    document.getElementById('modalPassword').value = p.password;
+                    document.getElementById('modal').classList.add('active');
+                });
+        }
+
+        async function deletePassword(index) {
+            if (!confirm('Are you sure you want to delete this password?')) return;
+
+            const res = await fetch(`/api/passwords/${index}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast('Password deleted', 'success');
+                loadPasswords();
+            }
+        }
+
+        async function searchPasswords(query) {
+            if (!query) {
+                loadPasswords();
+                return;
+            }
+            const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            const passwords = await res.json();
+            renderPasswords(passwords);
+        }
+
+        async function generatePassword() {
+            const res = await fetch('/api/generate?length=16');
+            const data = await res.json();
+            document.getElementById('generatedPassword').textContent = data.password;
+            document.getElementById('generateModal').classList.add('active');
+        }
+
+        function closeGenerateModal() {
+            document.getElementById('generateModal').classList.remove('active');
+        }
+
+        function copyGenerated() {
+            const pwd = document.getElementById('generatedPassword').textContent;
+            copyText(pwd);
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard!', 'success');
+            });
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            location.reload();
+        }
+
+        function openChangePasswordModal() {
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('changePasswordModal').classList.add('active');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').classList.remove('active');
+        }
+
+        async function submitChangePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showToast('All fields are required', 'error');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showToast('New password must be at least 8 characters', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Master password changed!', 'success');
+                closeChangePasswordModal();
+            } else {
+                showToast(data.error || 'Failed to change password', 'error');
+            }
+        }
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Enter key to submit
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSubmit();
+        });
+
+        // Initialize
+        checkInit();
+    </script>
+</body>
+</html>
