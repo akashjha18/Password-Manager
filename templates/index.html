@@ -43,38 +43,79 @@
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, #00d9ff, #0099cc);
             color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(0, 217, 255, 0.5);
         }
 
         .btn-danger {
             background: linear-gradient(135deg, #ff4757, #ff3838);
             color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(255, 71, 87, 0.5);
         }
 
         .btn-success {
             background: linear-gradient(135deg, #2ed573, #26b55f);
             color: #fff;
+            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(46, 213, 115, 0.5);
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.1);
+            background: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
             color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
+            transform: translateY(-3px) scale(1.02);
+            border-color: rgba(255,255,255,0.3);
         }
 
         .auth-container {
@@ -143,25 +184,33 @@
 
         .toolbar {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             margin: 20px 0;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .search-box {
             flex: 1;
-            min-width: 200px;
-            padding: 12px 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
+            min-width: 250px;
+            padding: 14px 20px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
             color: #fff;
             font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-box::placeholder {
+            color: rgba(255,255,255,0.4);
         }
 
         .search-box:focus {
             outline: none;
             border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
         }
 
         .password-grid {
@@ -172,37 +221,107 @@
         }
 
         .password-card {
-            background: rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 20px;
-            transition: all 0.3s;
+            border-radius: 20px;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .password-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         .password-card:hover {
-            transform: translateY(-5px);
-            border-color: #00d9ff;
-            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.15);
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 217, 255, 0.5);
+            box-shadow: 0 20px 40px rgba(0, 217, 255, 0.2), 0 0 30px rgba(0, 217, 255, 0.1);
+        }
+
+        .password-card:hover::before {
+            opacity: 1;
         }
 
         .password-card h3 {
             color: #00d9ff;
-            margin-bottom: 15px;
+            margin-bottom: 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 1.3rem;
+        }
+
+        .site-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00d9ff22, #00ff8822);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 12px;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+        }
+
+        .site-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .site-name-wrapper {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .site-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .password-card .field {
-            margin-bottom: 12px;
+            margin-bottom: 14px;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            border-left: 3px solid transparent;
+        }
+
+        .password-card .field:first-of-type {
+            border-left-color: #00d9ff;
+        }
+
+        .password-card .field:last-of-type {
+            border-left-color: #2ed573;
         }
 
         .password-card .field label {
-            display: block;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 8px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .field-icon {
+            font-size: 14px;
         }
 
         .password-card .field-value {
@@ -221,15 +340,35 @@
         .card-actions {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 18px;
             padding-top: 15px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255,255,255,0.08);
         }
 
         .card-actions .btn {
             flex: 1;
-            padding: 8px;
+            padding: 10px 16px;
             font-size: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .card-actions .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-actions .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .card-actions .btn-danger:hover {
+            box-shadow: 0 5px 20px rgba(255, 71, 87, 0.4);
         }
 
         .modal {
@@ -250,44 +389,62 @@
         }
 
         .modal-content {
-            background: #1a1a2e;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-            padding: 30px;
+            background: linear-gradient(145deg, rgba(26,26,46,0.95) 0%, rgba(22,33,62,0.95) 100%);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            border-radius: 24px;
+            padding: 32px;
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
         }
 
         .modal-content h3 {
             color: #00d9ff;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(0, 217, 255, 0.2);
         }
 
         .modal-content .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 18px;
         }
 
         .modal-content label {
-            display: block;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 8px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .modal-content input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
             color: #fff;
             font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .modal-content input::placeholder {
+            color: rgba(255,255,255,0.3);
         }
 
         .modal-content input:focus {
             outline: none;
             border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
         }
 
         .modal-actions {
@@ -337,18 +494,43 @@
         }
 
         .copy-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 5px;
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            color: #00d9ff;
+            padding: 6px 12px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .copy-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.4), rgba(0, 255, 136, 0.4));
+            border-color: #00d9ff;
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+
+        .password-strength-indicator {
+            display: inline-flex;
+            gap: 3px;
+            margin-left: 8px;
+        }
+
+        .strength-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
             background: rgba(255,255,255,0.2);
         }
+
+        .strength-dot.active.weak { background: #ff4757; }
+        .strength-dot.active.medium { background: #ffa502; }
+        .strength-dot.active.strong { background: #2ed573; }
 
         .generated-password {
             font-size: 1.4rem;
@@ -380,58 +562,109 @@
         }
 
         .stat-card {
-            background: rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 24px;
             text-align: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) scale(1.05);
         }
 
         .stat-card.danger {
             border-color: #ff4757;
-            box-shadow: 0 0 20px rgba(255, 71, 87, 0.2);
+            box-shadow: 0 0 30px rgba(255, 71, 87, 0.25), inset 0 0 20px rgba(255, 71, 87, 0.05);
+        }
+
+        .stat-card.danger .stat-icon {
+            background: linear-gradient(135deg, #ff4757, #ff3838);
         }
 
         .stat-card.warning {
             border-color: #ffa502;
-            box-shadow: 0 0 20px rgba(255, 165, 2, 0.2);
+            box-shadow: 0 0 30px rgba(255, 165, 2, 0.25), inset 0 0 20px rgba(255, 165, 2, 0.05);
+        }
+
+        .stat-card.warning .stat-icon {
+            background: linear-gradient(135deg, #ffa502, #ff7f50);
         }
 
         .stat-card.success {
             border-color: #2ed573;
-            box-shadow: 0 0 20px rgba(46, 213, 115, 0.2);
+            box-shadow: 0 0 30px rgba(46, 213, 115, 0.25), inset 0 0 20px rgba(46, 213, 115, 0.05);
+        }
+
+        .stat-card.success .stat-icon {
+            background: linear-gradient(135deg, #2ed573, #26b55f);
         }
 
         .stat-card.info {
             border-color: #00d9ff;
-            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.25), inset 0 0 20px rgba(0, 217, 255, 0.05);
+        }
+
+        .stat-card.info .stat-icon {
+            background: linear-gradient(135deg, #00d9ff, #0099cc);
+        }
+
+        .stat-card .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
         .stat-card .stat-number {
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             font-weight: bold;
             margin-bottom: 5px;
+            background: linear-gradient(135deg, #fff, rgba(255,255,255,0.7));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-card .stat-label {
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.6);
             font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .health-section {
-            background: rgba(255,255,255,0.05);
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 24px;
             margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .health-section:hover {
+            border-color: rgba(0, 217, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.1);
         }
 
         .health-section h3 {
             color: #00d9ff;
-            margin-bottom: 15px;
+            margin-bottom: 18px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 1.2rem;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
         .health-item {
@@ -472,16 +705,43 @@
         }
 
         .score-circle {
-            width: 150px;
-            height: 150px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            margin: 0 auto 15px;
-            font-size: 2.5rem;
+            margin: 0 auto 20px;
+            font-size: 3rem;
             font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            position: relative;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d9ff, #00ff88, #00d9ff);
+            z-index: -1;
+            opacity: 0.3;
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .score-excellent {
@@ -540,22 +800,22 @@
             <header>
                 <div class="logo">🔐 <span>Password Manager</span></div>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary" onclick="openChangePasswordModal()">🔒 Change Password</button>
-                    <button class="btn btn-danger" onclick="logout()">Logout</button>
+                    <button class="btn btn-secondary" onclick="openChangePasswordModal()">🔐 Change Password</button>
+                    <button class="btn btn-danger" onclick="logout()">🚪 Logout</button>
                 </div>
             </header>
 
             <div class="view-toggle">
                 <button class="btn btn-primary active" id="passwordsViewBtn" onclick="switchView('passwords')">📋 Passwords</button>
-                <button class="btn btn-secondary" id="healthViewBtn" onclick="switchView('health')">📊 Health Dashboard</button>
+                <button class="btn btn-secondary" id="healthViewBtn" onclick="switchView('health')">💚 Health Dashboard</button>
             </div>
 
             <!-- Passwords View -->
             <div id="passwordsView">
                 <div class="toolbar">
-                    <input type="text" class="search-box" placeholder="Search passwords..." oninput="searchPasswords(this.value)">
-                    <button class="btn btn-primary" onclick="openAddModal()">+ Add Password</button>
-                    <button class="btn btn-success" onclick="generatePassword()">🔑 Generate</button>
+                    <input type="text" class="search-box" placeholder="🔍 Search passwords..." oninput="searchPasswords(this.value)">
+                    <button class="btn btn-primary" onclick="openAddModal()">➕ Add Password</button>
+                    <button class="btn btn-success" onclick="generatePassword()">🎲 Generate</button>
                 </div>
                 <div id="passwordGrid" class="password-grid"></div>
             </div>
@@ -690,13 +950,40 @@
             renderPasswords(passwords);
         }
 
+        function getSiteIcon(site) {
+            const lowerSite = site.toLowerCase();
+            if (lowerSite.includes('google')) return '🔵';
+            if (lowerSite.includes('facebook')) return '📘';
+            if (lowerSite.includes('twitter') || lowerSite.includes('x.com')) return '✖️';
+            if (lowerSite.includes('github')) return '🐙';
+            if (lowerSite.includes('amazon')) return '📦';
+            if (lowerSite.includes('netflix')) return '🎬';
+            if (lowerSite.includes('spotify')) return '🎵';
+            if (lowerSite.includes('apple') || lowerSite.includes('icloud')) return '🍎';
+            if (lowerSite.includes('microsoft') || lowerSite.includes('windows')) return '🪟';
+            if (lowerSite.includes('paypal')) return '💰';
+            if (lowerSite.includes('bank') || lowerSite.includes('finance')) return '🏦';
+            if (lowerSite.includes('email') || lowerSite.includes('mail')) return '📧';
+            if (lowerSite.includes('cloud') || lowerSite.includes('drive')) return '☁️';
+            if (lowerSite.includes('game') || lowerSite.includes('steam')) return '🎮';
+            if (lowerSite.includes('social') || lowerSite.includes('reddit')) return '💬';
+            if (lowerSite.includes('shop') || lowerSite.includes('store')) return '🛒';
+            if (lowerSite.includes('music')) return '🎼';
+            if (lowerSite.includes('video') || lowerSite.includes('youtube')) return '📺';
+            if (lowerSite.includes('photo') || lowerSite.includes('image')) return '📷';
+            if (lowerSite.includes('health') || lowerSite.includes('medical')) return '🏥';
+            if (lowerSite.includes('work') || lowerSite.includes('office')) return '💼';
+            if (lowerSite.includes('school') || lowerSite.includes('edu')) return '📚';
+            return '🔐';
+        }
+
         function renderPasswords(passwords) {
             const grid = document.getElementById('passwordGrid');
             if (passwords.length === 0) {
                 grid.innerHTML = `
                     <div class="empty-state" style="grid-column: 1/-1;">
-                        <h3>No passwords yet</h3>
-                        <p>Click "Add Password" to store your first credential</p>
+                        <h3>📭 No passwords yet</h3>
+                        <p style="margin-top: 10px; opacity: 0.7;">Click "Add Password" to store your first credential</p>
                     </div>
                 `;
                 return;
@@ -704,24 +991,39 @@
 
             grid.innerHTML = passwords.map((p, i) => `
                 <div class="password-card">
-                    <h3>${escapeHtml(p.site)}</h3>
+                    <h3>
+                        <div class="site-header">
+                            <div class="site-icon">${getSiteIcon(p.site)}</div>
+                            <div class="site-name-wrapper">
+                                <span class="site-name">${escapeHtml(p.site)}</span>
+                            </div>
+                        </div>
+                    </h3>
                     <div class="field">
-                        <label>Username</label>
+                        <label><span class="field-icon">👤</span> Username</label>
                         <div class="field-value">
-                            ${escapeHtml(p.username)}
-                            <button class="copy-btn" onclick="copyText('${escapeHtml(p.username)}')">Copy</button>
+                            <span style="color: #fff;">${escapeHtml(p.username)}</span>
+                            <button class="copy-btn" onclick="copyText('${escapeHtml(p.username)}')">
+                                <span>📋</span> Copy
+                            </button>
                         </div>
                     </div>
                     <div class="field">
-                        <label>Password</label>
+                        <label><span class="field-icon">🔑</span> Password</label>
                         <div class="field-value">
-                            <span class="password-value">${'•'.repeat(Math.min(p.password.length, 12))}</span>
-                            <button class="copy-btn" onclick="copyText('${p.password}')">Copy</button>
+                            <span class="password-value" style="letter-spacing: 3px;">${'•'.repeat(Math.min(p.password.length, 16))}</span>
+                            <button class="copy-btn" onclick="copyText('${p.password}')">
+                                <span>📋</span> Copy
+                            </button>
                         </div>
                     </div>
                     <div class="card-actions">
-                        <button class="btn btn-secondary" onclick="editPassword(${i})">Edit</button>
-                        <button class="btn btn-danger" onclick="deletePassword(${i})">Delete</button>
+                        <button class="btn btn-secondary" onclick="editPassword(${i})">
+                            <span>✏️</span> Edit
+                        </button>
+                        <button class="btn btn-danger" onclick="deletePassword(${i})">
+                            <span>🗑️</span> Delete
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -955,18 +1257,22 @@
             // Render stat cards
             const statsHtml = `
                 <div class="stat-card ${weakCount > 0 ? 'danger' : 'success'}">
+                    <div class="stat-icon">${weakCount > 0 ? '⚠️' : '✅'}</div>
                     <div class="stat-number">${weakCount}</div>
                     <div class="stat-label">Weak Passwords</div>
                 </div>
                 <div class="stat-card ${reusedCount > 0 ? 'danger' : 'success'}">
+                    <div class="stat-icon">${reusedCount > 0 ? '🔄' : '✅'}</div>
                     <div class="stat-number">${reusedCount}</div>
                     <div class="stat-label">Reused Passwords</div>
                 </div>
                 <div class="stat-card ${oldCount > 0 ? 'warning' : 'success'}">
+                    <div class="stat-icon">${oldCount > 0 ? '🕐' : '✅'}</div>
                     <div class="stat-number">${oldCount}</div>
                     <div class="stat-label">Old (>180 days)</div>
                 </div>
                 <div class="stat-card ${expiringCount > 0 ? 'warning' : 'success'}">
+                    <div class="stat-icon">${expiringCount > 0 ? '⏰' : '✅'}</div>
                     <div class="stat-number">${expiringCount}</div>
                     <div class="stat-label">Expiring Soon</div>
                 </div>
