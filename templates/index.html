@@ -5,6 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Manager</title>
     <style>
+        :root {
+            /* Dark Theme (Default) */
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-card: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            --bg-card-alt: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            --bg-input: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            --bg-modal: linear-gradient(145deg, rgba(26,26,46,0.95) 0%, rgba(22,33,62,0.95) 100%);
+            --text-primary: #fff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.5);
+            --border-color: rgba(255,255,255,0.1);
+            --border-color-light: rgba(255,255,255,0.12);
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent-cyan: #00d9ff;
+            --accent-green: #2ed573;
+            --accent-red: #ff4757;
+            --accent-orange: #ffa502;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --bg-card: linear-gradient(145deg, #ffffff 0%, #f0f4f8 100%);
+            --bg-card-alt: linear-gradient(145deg, #e8eef5 0%, #d9e2ec 100%);
+            --bg-input: linear-gradient(145deg, #f8fafc 0%, #eef2f7 100%);
+            --bg-modal: linear-gradient(145deg, #ffffff 0%, #f5f8fc 100%);
+            --text-primary: #1a1a2e;
+            --text-secondary: rgba(26,26,46,0.7);
+            --text-muted: rgba(26,26,46,0.5);
+            --border-color: rgba(0,0,0,0.1);
+            --border-color-light: rgba(0,0,0,0.12);
+            --shadow-color: rgba(0, 0, 0, 0.15);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,9 +46,10 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--bg-primary);
             min-height: 100vh;
-            color: #fff;
+            color: var(--text-primary);
+            transition: background 0.4s ease, color 0.4s ease;
         }
 
         .container {
@@ -74,7 +108,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #00d9ff, #0099cc);
+            background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
             color: #fff;
             box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
         }
@@ -85,7 +119,7 @@
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ff4757, #ff3838);
+            background: linear-gradient(135deg, var(--accent-red), var(--accent-red));
             color: #fff;
             box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
         }
@@ -96,7 +130,7 @@
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #2ed573, #26b55f);
+            background: linear-gradient(135deg, var(--accent-green), #26b55f);
             color: #fff;
             box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
         }
@@ -107,15 +141,15 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--bg-card-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
 
         .btn-secondary:hover {
-            background: linear-gradient(145deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
+            filter: brightness(1.1);
             transform: translateY(-3px) scale(1.02);
-            border-color: rgba(255,255,255,0.3);
+            border-color: var(--accent-cyan);
         }
 
         .auth-container {
@@ -126,40 +160,47 @@
         }
 
         .auth-box {
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-card);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 40px;
             width: 100%;
             max-width: 400px;
             text-align: center;
+            box-shadow: 0 20px 60px var(--shadow-color);
         }
 
         .auth-box h2 {
             margin-bottom: 10px;
-            color: #00d9ff;
+            color: var(--accent-cyan);
         }
 
         .auth-box p {
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
             margin-bottom: 30px;
         }
 
         .auth-box input {
             width: 100%;
             padding: 15px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid var(--border-color);
             border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            color: #fff;
+            background: var(--bg-input);
+            color: var(--text-primary);
             font-size: 16px;
             margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .auth-box input::placeholder {
+            color: var(--text-muted);
         }
 
         .auth-box input:focus {
             outline: none;
-            border-color: #00d9ff;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
         }
 
         .auth-box .btn {
@@ -194,23 +235,24 @@
             flex: 1;
             min-width: 250px;
             padding: 14px 20px;
-            border: 1px solid rgba(255,255,255,0.12);
+            border: 1px solid var(--border-color-light);
             border-radius: 12px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-            color: #fff;
+            background: var(--bg-input);
+            color: var(--text-primary);
             font-size: 14px;
             transition: all 0.3s;
         }
 
         .search-box::placeholder {
-            color: rgba(255,255,255,0.4);
+            color: var(--text-muted);
         }
 
         .search-box:focus {
             outline: none;
-            border-color: #00d9ff;
+            border-color: var(--accent-cyan);
             box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
-            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+            background: var(--bg-input);
+            filter: brightness(1.1);
         }
 
         .password-grid {
@@ -221,13 +263,14 @@
         }
 
         .password-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 24px;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 4px 15px var(--shadow-color);
         }
 
         .password-card::before {
@@ -237,14 +280,14 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
             opacity: 0;
             transition: opacity 0.3s;
         }
 
         .password-card:hover {
             transform: translateY(-8px) scale(1.02);
-            border-color: rgba(0, 217, 255, 0.5);
+            border-color: var(--accent-cyan);
             box-shadow: 0 20px 40px rgba(0, 217, 255, 0.2), 0 0 30px rgba(0, 217, 255, 0.1);
         }
 
@@ -253,7 +296,7 @@
         }
 
         .password-card h3 {
-            color: #00d9ff;
+            color: var(--accent-cyan);
             margin-bottom: 18px;
             display: flex;
             justify-content: space-between;
@@ -301,11 +344,11 @@
         }
 
         .password-card .field:first-of-type {
-            border-left-color: #00d9ff;
+            border-left-color: var(--accent-cyan);
         }
 
         .password-card .field:last-of-type {
-            border-left-color: #2ed573;
+            border-left-color: var(--accent-green);
         }
 
         .password-card .field label {
@@ -313,7 +356,7 @@
             align-items: center;
             gap: 6px;
             font-size: 11px;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-muted);
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -334,7 +377,7 @@
 
         .password-card .password-value {
             font-family: 'Courier New', monospace;
-            color: #2ed573;
+            color: var(--accent-green);
         }
 
         .card-actions {
@@ -342,7 +385,7 @@
             gap: 10px;
             margin-top: 18px;
             padding-top: 15px;
-            border-top: 1px solid rgba(255,255,255,0.08);
+            border-top: 1px solid var(--border-color);
         }
 
         .card-actions .btn {
@@ -389,24 +432,24 @@
         }
 
         .modal-content {
-            background: linear-gradient(145deg, rgba(26,26,46,0.95) 0%, rgba(22,33,62,0.95) 100%);
-            border: 1px solid rgba(0, 217, 255, 0.2);
+            background: var(--bg-modal);
+            border: 1px solid var(--border-color);
             border-radius: 24px;
             padding: 32px;
             width: 100%;
             max-width: 480px;
-            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 80px var(--shadow-color);
         }
 
         .modal-content h3 {
-            color: #00d9ff;
+            color: var(--accent-cyan);
             margin-bottom: 24px;
             font-size: 1.4rem;
             display: flex;
             align-items: center;
             gap: 10px;
             padding-bottom: 16px;
-            border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .modal-content .form-group {
@@ -418,7 +461,7 @@
             align-items: center;
             gap: 8px;
             font-size: 11px;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-muted);
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -428,23 +471,23 @@
         .modal-content input {
             width: 100%;
             padding: 14px 16px;
-            border: 1px solid rgba(255,255,255,0.12);
+            border: 1px solid var(--border-color-light);
             border-radius: 12px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-            color: #fff;
+            background: var(--bg-input);
+            color: var(--text-primary);
             font-size: 14px;
             transition: all 0.3s;
         }
 
         .modal-content input::placeholder {
-            color: rgba(255,255,255,0.3);
+            color: var(--text-muted);
         }
 
         .modal-content input:focus {
             outline: none;
-            border-color: #00d9ff;
+            border-color: var(--accent-cyan);
             box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
-            background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+            filter: brightness(1.1);
         }
 
         .modal-actions {
@@ -460,7 +503,7 @@
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: rgba(255,255,255,0.5);
+            color: var(--text-muted);
         }
 
         .empty-state h3 {
@@ -495,8 +538,8 @@
 
         .copy-btn {
             background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(0, 255, 136, 0.2));
-            border: 1px solid rgba(0, 217, 255, 0.3);
-            color: #00d9ff;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
             padding: 6px 12px;
             border-radius: 8px;
             cursor: pointer;
@@ -510,7 +553,7 @@
 
         .copy-btn:hover {
             background: linear-gradient(135deg, rgba(0, 217, 255, 0.4), rgba(0, 255, 136, 0.4));
-            border-color: #00d9ff;
+            border-color: var(--accent-cyan);
             transform: scale(1.05);
             box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
         }
@@ -657,14 +700,14 @@
         }
 
         .health-section h3 {
-            color: #00d9ff;
+            color: var(--accent-cyan);
             margin-bottom: 18px;
             display: flex;
             align-items: center;
             gap: 12px;
             font-size: 1.2rem;
             padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .health-item {
@@ -672,7 +715,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .health-item:last-child {
@@ -685,12 +728,12 @@
 
         .health-item-site {
             font-weight: 600;
-            color: #fff;
+            color: var(--text-primary);
         }
 
         .health-item-reason {
             font-size: 0.85rem;
-            color: rgba(255,255,255,0.5);
+            color: var(--text-muted);
         }
 
         .health-item .btn {
