@@ -819,7 +819,29 @@
         }
 
         .view-toggle .btn.active {
-            background: linear-gradient(135deg, #00d9ff, #0099cc);
+            background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
+        }
+
+        /* Theme Toggle Button */
+        #themeBtn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            font-size: 1.2rem;
+            border-radius: 50%;
+        }
+
+        [data-theme="light"] .password-card {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="light"] .btn-secondary {
+            background: linear-gradient(145deg, #e8eef5 0%, #d9e2ec 100%);
+            color: #1a1a2e;
+        }
+
+        [data-theme="light"] .auth-box {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
         }
     </style>
 </head>
@@ -842,7 +864,8 @@
         <div id="mainApp" class="main-app">
             <header>
                 <div class="logo">🔐 <span>Password Manager</span></div>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme">🌙</button>
                     <button class="btn btn-secondary" onclick="openChangePasswordModal()">🔐 Change Password</button>
                     <button class="btn btn-danger" onclick="logout()">🚪 Logout</button>
                 </div>
@@ -1447,8 +1470,31 @@
             if (e.key === 'Enter') handleSubmit();
         });
 
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeBtn = document.getElementById('themeBtn');
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            html.setAttribute('data-theme', newTheme);
+            themeBtn.textContent = newTheme === 'light' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            const html = document.documentElement;
+            const themeBtn = document.getElementById('themeBtn');
+
+            html.setAttribute('data-theme', savedTheme);
+            themeBtn.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+        }
+
         // Initialize
         checkInit();
+        loadTheme();
     </script>
 </body>
 </html>
