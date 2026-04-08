@@ -558,6 +558,89 @@
             box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
         }
 
+        .password-strength-container {
+            margin-top: 10px;
+            padding: 12px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .password-strength-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .strength-bar-container {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 3px;
+            transition: all 0.4s ease;
+        }
+
+        .strength-bar.weak {
+            width: 33%;
+            background: linear-gradient(90deg, #ff4757, #ff3838);
+        }
+
+        .strength-bar.medium {
+            width: 66%;
+            background: linear-gradient(90deg, #ffa502, #ff7f50);
+        }
+
+        .strength-bar.strong {
+            width: 100%;
+            background: linear-gradient(90deg, #2ed573, #26b55f);
+        }
+
+        .strength-text {
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .strength-text.weak { color: #ff4757; }
+        .strength-text.medium { color: #ffa502; }
+        .strength-text.strong { color: #2ed573; }
+
+        .strength-criteria {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .criteria-item {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+        }
+
+        .criteria-item.met {
+            color: var(--accent-green);
+            background: rgba(46, 213, 115, 0.1);
+        }
+
         .password-strength-indicator {
             display: inline-flex;
             gap: 3px;
@@ -916,7 +999,23 @@
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="text" id="modalPassword" placeholder="Enter password">
+                <input type="text" id="modalPassword" placeholder="Enter password" oninput="checkPasswordStrength()">
+                <div class="password-strength-container" id="strengthContainer">
+                    <div class="strength-bar-container">
+                        <div class="strength-bar" id="strengthBar"></div>
+                    </div>
+                    <div class="strength-text">
+                        <span id="strengthLabel">Password Strength</span>
+                        <span id="strengthScore"></span>
+                    </div>
+                    <div class="strength-criteria" id="strengthCriteria">
+                        <span class="criteria-item" id="crit-length"><span class="icon">○</span> 8+ characters</span>
+                        <span class="criteria-item" id="crit-uppercase"><span class="icon">○</span> Uppercase letter</span>
+                        <span class="criteria-item" id="crit-lowercase"><span class="icon">○</span> Lowercase letter</span>
+                        <span class="criteria-item" id="crit-number"><span class="icon">○</span> Number</span>
+                        <span class="criteria-item" id="crit-symbol"><span class="icon">○</span> Symbol</span>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -1490,6 +1589,77 @@
 
             html.setAttribute('data-theme', savedTheme);
             themeBtn.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+        }
+
+        // Password Strength Checker
+        function checkPasswordStrength() {
+            const password = document.getElementById('modalPassword').value;
+            const container = document.getElementById('strengthContainer');
+            const bar = document.getElementById('strengthBar');
+            const label = document.getElementById('strengthLabel');
+            const score = document.getElementById('strengthScore');
+
+            if (!password) {
+                container.classList.remove('active');
+                return;
+            }
+
+            container.classList.add('active');
+
+            let strength = 0;
+            let criteria = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+            };
+
+            // Update criteria display
+            updateCriteria('crit-length', criteria.length);
+            updateCriteria('crit-uppercase', criteria.uppercase);
+            updateCriteria('crit-lowercase', criteria.lowercase);
+            updateCriteria('crit-number', criteria.number);
+            updateCriteria('crit-symbol', criteria.symbol);
+
+            // Calculate score
+            if (criteria.length) strength++;
+            if (criteria.uppercase) strength++;
+            if (criteria.lowercase) strength++;
+            if (criteria.number) strength++;
+            if (criteria.symbol) strength++;
+            if (password.length >= 12) strength++;
+            if (password.length >= 16) strength++;
+
+            // Determine strength level
+            let level = 'weak';
+            let labelText = 'Weak';
+            let scoreText = strength + '/7';
+
+            if (strength >= 6) {
+                level = 'strong';
+                labelText = 'Strong';
+            } else if (strength >= 4) {
+                level = 'medium';
+                labelText = 'Medium';
+            }
+
+            // Update UI
+            bar.className = 'strength-bar ' + level;
+            label.className = 'strength-text ' + level;
+            label.textContent = labelText;
+            score.textContent = scoreText;
+        }
+
+        function updateCriteria(id, met) {
+            const el = document.getElementById(id);
+            if (met) {
+                el.classList.add('met');
+                el.querySelector('.icon').textContent = '✓';
+            } else {
+                el.classList.remove('met');
+                el.querySelector('.icon').textContent = '○';
+            }
         }
 
         // Initialize
