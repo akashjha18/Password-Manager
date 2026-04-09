@@ -25,7 +25,6 @@ app.secret_key = secrets.token_hex(32)
 
 # Database and key files
 DB_FILE = "vault.db"
-KEY_FILE = ".key"
 LOG_FILE = "audit.log"
 
 # Session timeout (15 minutes)
@@ -73,6 +72,17 @@ def init_db():
     """Initialize the SQLite database with all tables"""
     db = get_db()
     db.executescript('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            two_fa_secret TEXT,
+            two_fa_enabled BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT
@@ -80,6 +90,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS passwords (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             site TEXT NOT NULL,
             username TEXT NOT NULL,
             password TEXT NOT NULL,
@@ -88,37 +99,46 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_used TIMESTAMP,
-            expiry_days INTEGER DEFAULT 90
+            expiry_days INTEGER DEFAULT 90,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS password_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             password_id INTEGER,
             password TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (password_id) REFERENCES passwords(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS secure_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             category TEXT DEFAULT 'personal',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
             action TEXT NOT NULL,
-            user TEXT,
             details TEXT,
             ip_address TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE INDEX IF NOT EXISTS idx_passwords_user ON passwords(user_id);
         CREATE INDEX IF NOT EXISTS idx_passwords_site ON passwords(site);
         CREATE INDEX IF NOT EXISTS idx_passwords_category ON passwords(category);
+        CREATE INDEX IF NOT EXISTS idx_notes_user ON secure_notes(user_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);
         CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
     ''')
     db.commit()
