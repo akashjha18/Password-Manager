@@ -25,6 +25,7 @@ app.secret_key = secrets.token_hex(32)
 
 # Database and key files
 DB_FILE = "vault.db"
+KEY_FILE = ".key"
 LOG_FILE = "audit.log"
 
 # Session timeout (15 minutes)
@@ -321,12 +322,15 @@ def index():
 
 @app.route('/api/init', methods=['GET'])
 def check_init():
-    salt, hash_val, totp_secret = init_encryption()
-    if salt and hash_val:
-        # Initialize DB if needed
+    # Check if any users exist in the database
+    try:
+        db = get_db()
+        cursor = db.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        return jsonify({'exists': user_count > 0, 'multi_user': True})
+    except:
         init_db()
-        return jsonify({'exists': True})
-    return jsonify({'exists': False})
+        return jsonify({'exists': False, 'multi_user': True})
 
 
 @app.route('/api/login', methods=['POST'])
@@ -334,58 +338,94 @@ def check_init():
 def login():
     global encryption_key
     data = request.json
+    username = data.get('username', '')
     password = data.get('password', '')
     totp_code = data.get('totp_code', '')
 
-    salt, stored_hash, totp_secret = init_encryption()
-    if not salt or not stored_hash:
-        return jsonify({'error': 'No vault exists'}), 400
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
 
-    if not verify_password(password, salt, stored_hash):
-        log_audit("LOGIN_FAILED", "Invalid password")
-        return jsonify({'error': 'Invalid password'}), 401
+    db = get_db()
+    cursor = db.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if not user:
+        log_audit("LOGIN_FAILED", f"Unknown user: {username}")
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    salt = base64.b64decode(user['salt'])
+    if not verify_password(password, salt, user['password_hash']):
+        log_audit("LOGIN_FAILED", f"Invalid password for user: {username}")
+        return jsonify({'error': 'Invalid credentials'}), 401
 
     # Check 2FA if enabled
-    with open(KEY_FILE, "r") as f:
-        key_data = json.load(f)
-
-    if key_data.get('2fa_enabled', False):
+    if user['two_fa_enabled']:
         if not totp_code:
             return jsonify({'error': '2FA code required', '2fa_required': True}), 401
-        totp = pyotp.TOTP(totp_secret)
+        totp = pyotp.TOTP(user['two_fa_secret'])
         if not totp.verify(totp_code):
-            log_audit("LOGIN_FAILED", "Invalid 2FA code")
+            log_audit("LOGIN_FAILED", f"Invalid 2FA code for user: {username}")
             return jsonify({'error': 'Invalid 2FA code'}), 401
 
     encryption_key = derive_key(password, salt)
     session['logged_in'] = True
     session['last_activity'] = datetime.now().isoformat()
-    session['username'] = 'vault_user'
+    session['username'] = username
+    session['user_id'] = user['id']
 
-    log_audit("LOGIN_SUCCESS", "User logged in")
-    return jsonify({'success': True, '2fa_enabled': key_data.get('2fa_enabled', False)})
+    log_audit("LOGIN_SUCCESS", f"User {username} logged in")
+    return jsonify({'success': True, 'username': username, '2fa_enabled': user['two_fa_enabled']})
 
 
-@app.route('/api/setup', methods=['POST'])
+@app.route('/api/register', methods=['POST'])
 @limiter.limit("3 per hour")
-def setup():
+def register():
     global encryption_key
     data = request.json
+    username = data.get('username', '')
     password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+
+    if len(username) < 3:
+        return jsonify({'error': 'Username must be at least 3 characters'}), 400
 
     if len(password) < 8:
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
 
-    encryption_key, totp_secret = setup_encryption(password)
-    init_db()
+    db = get_db()
 
+    # Check if username already exists
+    cursor = db.execute("SELECT id FROM users WHERE username = ?", (username,))
+    if cursor.fetchone():
+        return jsonify({'error': 'Username already exists'}), 400
+
+    # Generate salt and hash
+    salt = os.urandom(16)
+    key = derive_key(password, salt)
+    hasher = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    hasher.update(key)
+    password_hash = base64.b64encode(hasher.finalize()).decode()
+
+    totp_secret = pyotp.random_base32()
+
+    # Create user in database
+    db.execute('''
+        INSERT INTO users (username, password_hash, salt, two_fa_secret, two_fa_enabled)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (username, password_hash, base64.b64encode(salt).decode(), totp_secret, False))
+    db.commit()
+
+    encryption_key = key
     session['logged_in'] = True
     session['last_activity'] = datetime.now().isoformat()
-    session['username'] = 'vault_user'
+    session['username'] = username
+    session['user_id'] = db.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     # Generate QR code for 2FA setup
     qr_uri = pyotp.totp.TOTP(totp_secret).provisioning_uri(
-        name="Password Manager",
+        name=username,
         issuer_name="SecureVault"
     )
 
@@ -395,9 +435,10 @@ def setup():
     qr.save(buffered, format="PNG")
     qr_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-    log_audit("VAULT_CREATED", "New vault created")
+    log_audit("USER_REGISTERED", f"New user registered: {username}")
     return jsonify({
         'success': True,
+        'username': username,
         'totp_secret': totp_secret,
         'qr_code': qr_base64
     })
@@ -449,7 +490,7 @@ def disable_2fa():
 @login_required
 def get_passwords():
     db = get_db()
-    cursor = db.execute("SELECT * FROM passwords ORDER BY updated_at DESC")
+    cursor = db.execute("SELECT * FROM passwords WHERE user_id = ? ORDER BY updated_at DESC", (session['user_id'],))
     entries = cursor.fetchall()
 
     result = []
@@ -483,22 +524,16 @@ def add_password():
     if not site or not username or not password:
         return jsonify({'error': 'Site, username, and password required'}), 400
 
-    # Check for duplicate password
-    db = get_db()
-    cursor = db.execute("SELECT site FROM passwords WHERE password = ?",
-                       (encrypt_password(password, encryption_key),))
-    if cursor.fetchone():
-        log_audit("DUPLICATE_PASSWORD", f"Duplicate for {site}")
-
     encrypted_pwd = encrypt_password(password, encryption_key)
 
+    db = get_db()
     db.execute('''
-        INSERT INTO passwords (site, username, password, category, notes, expiry_days)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (site, username, encrypted_pwd, category, notes, expiry_days))
+        INSERT INTO passwords (user_id, site, username, password, category, notes, expiry_days)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (session['user_id'], site, username, encrypted_pwd, category, notes, expiry_days))
     db.commit()
 
-    log_audit("PASSWORD_ADDED", f"Added password for {site}")
+    log_audit("PASSWORD_ADDED", f"Added password for {site} by user {session['username']}")
     return jsonify({'success': True})
 
 
@@ -506,7 +541,7 @@ def add_password():
 @login_required
 def update_password(pwd_id):
     db = get_db()
-    cursor = db.execute("SELECT * FROM passwords WHERE id = ?", (pwd_id,))
+    cursor = db.execute("SELECT * FROM passwords WHERE id = ? AND user_id = ?", (pwd_id, session['user_id']))
     entry = cursor.fetchone()
 
     if not entry:
@@ -517,9 +552,9 @@ def update_password(pwd_id):
     # Save old password to history before updating
     if data.get('password'):
         db.execute('''
-            INSERT INTO password_history (password_id, password)
-            VALUES (?, ?)
-        ''', (pwd_id, entry['password']))
+            INSERT INTO password_history (user_id, password_id, password)
+            VALUES (?, ?, ?)
+        ''', (session['user_id'], pwd_id, entry['password']))
 
     updates = []
     values = []
@@ -550,7 +585,7 @@ def update_password(pwd_id):
     db.execute(f"UPDATE passwords SET {', '.join(updates)} WHERE id = ?", values)
     db.commit()
 
-    log_audit("PASSWORD_UPDATED", f"Updated password for {entry['site']}")
+    log_audit("PASSWORD_UPDATED", f"Updated password for {entry['site']} by user {session['username']}")
     return jsonify({'success': True})
 
 
@@ -558,7 +593,7 @@ def update_password(pwd_id):
 @login_required
 def delete_password(pwd_id):
     db = get_db()
-    cursor = db.execute("SELECT site FROM passwords WHERE id = ?", (pwd_id,))
+    cursor = db.execute("SELECT site FROM passwords WHERE id = ? AND user_id = ?", (pwd_id, session['user_id']))
     entry = cursor.fetchone()
 
     if not entry:
@@ -567,7 +602,7 @@ def delete_password(pwd_id):
     db.execute("DELETE FROM passwords WHERE id = ?", (pwd_id,))
     db.commit()
 
-    log_audit("PASSWORD_DELETED", f"Deleted password for {entry['site']}")
+    log_audit("PASSWORD_DELETED", f"Deleted password for {entry['site']} by user {session['username']}")
     return jsonify({'success': True})
 
 
@@ -615,13 +650,13 @@ def search():
     db = get_db()
     if category:
         cursor = db.execute(
-            "SELECT * FROM passwords WHERE (LOWER(site) LIKE ? OR LOWER(username) LIKE ?) AND category = ? ORDER BY site",
-            (f'%{query}%', f'%{query}%', category)
+            "SELECT * FROM passwords WHERE user_id = ? AND (LOWER(site) LIKE ? OR LOWER(username) LIKE ?) AND category = ? ORDER BY site",
+            (session['user_id'], f'%{query}%', f'%{query}%', category)
         )
     else:
         cursor = db.execute(
-            "SELECT * FROM passwords WHERE LOWER(site) LIKE ? OR LOWER(username) LIKE ? ORDER BY site",
-            (f'%{query}%', f'%{query}%')
+            "SELECT * FROM passwords WHERE user_id = ? AND (LOWER(site) LIKE ? OR LOWER(username) LIKE ?) ORDER BY site",
+            (session['user_id'], f'%{query}%', f'%{query}%')
         )
 
     entries = cursor.fetchall()
@@ -643,8 +678,8 @@ def search():
 def get_audit():
     db = get_db()
 
-    # Weak passwords (short or simple)
-    cursor = db.execute("SELECT id, site, username, password, length(password) as pwd_len FROM passwords")
+    # Weak passwords (short or simple) - filtered by user
+    cursor = db.execute("SELECT id, site, username, password FROM passwords WHERE user_id = ?", (session['user_id'],))
     all_passwords = cursor.fetchall()
 
     weak = []
@@ -691,13 +726,19 @@ def get_audit():
         if len(items) > 1:
             reused_list.append({
                 'password': pwd,
-                'items': items  # [{id, site}, ...]
+                'items': items
             })
 
-    # Get recent activity
-    cursor = db.execute(
-        "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 50"
-    )
+    # Get recent activity (global for admin, user-specific for others)
+    if session.get('is_admin'):
+        cursor = db.execute(
+            "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 50"
+        )
+    else:
+        cursor = db.execute(
+            "SELECT * FROM audit_log WHERE user_id = ? OR username = ? ORDER BY created_at DESC LIMIT 50",
+            (session['user_id'], session['username'])
+        )
     recent_activity = [dict(row) for row in cursor.fetchall()]
 
     return jsonify({
@@ -713,7 +754,7 @@ def get_audit():
 @login_required
 def get_notes():
     db = get_db()
-    cursor = db.execute("SELECT * FROM secure_notes ORDER BY updated_at DESC")
+    cursor = db.execute("SELECT * FROM secure_notes WHERE user_id = ? ORDER BY updated_at DESC", (session['user_id'],))
     notes = []
     for row in cursor.fetchall():
         note = dict(row)
@@ -736,12 +777,12 @@ def add_note():
     encrypted_content = encrypt_password(content, encryption_key)
     db = get_db()
     db.execute(
-        "INSERT INTO secure_notes (title, content, category) VALUES (?, ?, ?)",
-        (title, encrypted_content, category)
+        "INSERT INTO secure_notes (user_id, title, content, category) VALUES (?, ?, ?, ?)",
+        (session['user_id'], title, encrypted_content, category)
     )
     db.commit()
 
-    log_audit("NOTE_ADDED", f"Added note: {title}")
+    log_audit("NOTE_ADDED", f"Added note: {title} by user {session['username']}")
     return jsonify({'success': True})
 
 
