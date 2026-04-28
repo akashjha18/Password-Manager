@@ -8,3 +8,4 @@
 2026-04-07 23:02:45,270 - INFO - AUDIT: LOGIN_FAILED - Invalid password by vault_user
 2026-04-07 23:02:56,919 - INFO - AUDIT: LOGIN_SUCCESS - User logged in by vault_user
 2026-04-08 22:35:32,369 - INFO - AUDIT: LOGIN_SUCCESS - User logged in by vault_user
+2026-04-28 22:05:01,723 - INFO - AUDIT: USER_REGISTERED - New user registered: testuser by testuser
