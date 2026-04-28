@@ -936,9 +936,18 @@
                 <h2 id="authTitle">🔐 Password Manager</h2>
                 <p id="authSubtitle">Loading...</p>
                 <div id="authForm">
-                    <input type="password" id="passwordInput" placeholder="Enter master password">
-                    <button class="btn btn-primary" onclick="handleSubmit()" id="authBtn">Unlock Vault</button>
+                    <input type="text" id="usernameInput" placeholder="Username" style="display: none;">
+                    <input type="password" id="passwordInput" placeholder="Password">
+                    <button class="btn btn-primary" onclick="handleSubmit()" id="authBtn">Login</button>
                     <p class="error-msg" id="authError"></p>
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 10px;">
+                            <span id="authToggleText">Don't have an account?</span>
+                        </p>
+                        <button class="btn btn-secondary" onclick="toggleAuthMode()" id="authToggleBtn" style="width: 100%;">
+                            Create Account
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -949,6 +958,7 @@
                 <div class="logo">🔐 <span>Password Manager</span></div>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button class="btn btn-secondary" onclick="toggleTheme()" id="themeBtn" title="Toggle Theme">🌙</button>
+                    <button class="btn btn-secondary" onclick="openAdminPanel()" id="adminBtn" style="display: none;">👥 Users</button>
                     <button class="btn btn-secondary" onclick="openChangePasswordModal()">🔐 Change Password</button>
                     <button class="btn btn-danger" onclick="logout()">🚪 Logout</button>
                 </div>
@@ -1039,14 +1049,23 @@
     <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal">
         <div class="modal-content">
-            <h3>🔒 Change Master Password</h3>
+            <h3>🔒 Change Password</h3>
             <div class="form-group">
                 <label>Current Password</label>
                 <input type="password" id="currentPassword" placeholder="Enter current password">
             </div>
             <div class="form-group">
                 <label>New Password</label>
-                <input type="password" id="newPassword" placeholder="Enter new password">
+                <input type="password" id="newPassword" placeholder="Enter new password" oninput="checkPasswordStrengthChange()">
+                <div class="password-strength-container" id="strengthContainerChange">
+                    <div class="strength-bar-container">
+                        <div class="strength-bar" id="strengthBarChange"></div>
+                    </div>
+                    <div class="strength-text">
+                        <span id="strengthLabelChange">Password Strength</span>
+                        <span id="strengthScoreChange"></span>
+                    </div>
+                </div>
             </div>
             <div class="form-group">
                 <label>Confirm New Password</label>
@@ -1059,12 +1078,24 @@
         </div>
     </div>
 
+    <!-- Admin User Management Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <h3>👥 User Management</h3>
+            <div id="usersList" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeAdminPanel()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
     <script>
         let editingIndex = -1;
         let isLoggedIn = false;
+        let sessionUsername = '';
 
         // Check if vault exists
         async function checkInit() {
@@ -1078,31 +1109,114 @@
                 : 'Create Vault';
         }
 
+        let isRegisterMode = false;
+
         async function handleSubmit() {
+            const username = document.getElementById('usernameInput').value;
             const password = document.getElementById('passwordInput').value;
+
             if (!password) {
                 showToast('Please enter a password', 'error');
                 return;
             }
 
-            const exists = document.getElementById('authBtn').textContent === 'Unlock Vault';
-            const endpoint = exists ? '/api/login' : '/api/setup';
+            const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+            const payload = isRegisterMode ? { username, password } : { password };
 
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json();
             if (res.ok) {
                 isLoggedIn = true;
+                sessionUsername = data.username || username;
+                localStorage.setItem('username', sessionUsername);
+
+                // Update admin button visibility
+                if (data.is_admin) {
+                    document.getElementById('adminBtn').style.display = 'flex';
+                }
+
                 document.getElementById('authContainer').style.display = 'none';
                 document.getElementById('mainApp').classList.add('active');
+
+                // Show 2FA setup if registering
+                if (isRegisterMode && data.qr_code) {
+                    show2FASetup(data);
+                    return;
+                }
+
                 loadPasswords();
             } else {
                 document.getElementById('authError').textContent = data.error;
             }
+        }
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('authTitle').textContent = isRegisterMode ? '🔐 Create Account' : '🔐 Password Manager';
+            document.getElementById('authBtn').textContent = isRegisterMode ? 'Create Account' : 'Login';
+            document.getElementById('authToggleBtn').textContent = isRegisterMode ? 'Back to Login' : 'Create Account';
+            document.getElementById('authToggleText').textContent = isRegisterMode ? 'Already have an account?' : "Don't have an account?";
+            document.getElementById('usernameInput').style.display = isRegisterMode ? 'block' : 'none';
+            document.getElementById('authError').textContent = '';
+        }
+
+        function show2FASetup(data) {
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3>🔐 Setup Two-Factor Authentication</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                    </p>
+                    <img src="data:image/png;base64,${data.qr_code}" alt="QR Code" style="width: 200px; height: 200px; margin: 0 auto; display: block; border: 1px solid var(--border-color); border-radius: 12px;">
+                    <p style="color: var(--text-muted); text-align: center; margin-top: 15px; font-size: 12px;">
+                        Secret: ${data.totp_secret}
+                    </p>
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Enter 6-digit code from your app</label>
+                        <input type="text" id="totpCodeInput" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="skip2FA()">Skip for Now</button>
+                        <button class="btn btn-primary" onclick="verify2FA()">Verify & Enable</button>
+                    </div>
+                </div>
+            `;
+            modal.classList.add('active');
+            document.getElementById('totpCodeInput').focus();
+        }
+
+        async function verify2FA() {
+            const code = document.getElementById('totpCodeInput').value;
+            if (!code || code.length !== 6) {
+                showToast('Please enter a 6-digit code', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/verify-2fa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ totp_code: code })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast('2FA enabled successfully!', 'success');
+                document.getElementById('modal').classList.remove('active');
+                loadPasswords();
+            } else {
+                showToast(data.error || 'Invalid code', 'error');
+            }
+        }
+
+        function skip2FA() {
+            document.getElementById('modal').classList.remove('active');
+            loadPasswords();
         }
 
         async function loadPasswords() {
@@ -1564,9 +1678,21 @@
                 });
         }
 
-        // Enter key to submit
+        // Enter key handlers
         document.getElementById('passwordInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSubmit();
+        });
+
+        document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('passwordInput').focus();
+        });
+
+        document.getElementById('totpCodeInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verify2FA();
+        });
+
+        document.getElementById('confirmPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitChangePassword();
         });
 
         // Theme Toggle
@@ -1659,6 +1785,109 @@
             } else {
                 el.classList.remove('met');
                 el.querySelector('.icon').textContent = '○';
+            }
+        }
+
+        // Password strength for change password modal
+        function checkPasswordStrengthChange() {
+            const password = document.getElementById('newPassword').value;
+            const container = document.getElementById('strengthContainerChange');
+            const bar = document.getElementById('strengthBarChange');
+            const label = document.getElementById('strengthLabelChange');
+            const score = document.getElementById('strengthScoreChange');
+
+            if (!password) {
+                container.classList.remove('active');
+                return;
+            }
+
+            container.classList.add('active');
+
+            let strength = 0;
+            let criteria = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+            };
+
+            // Calculate score
+            if (criteria.length) strength++;
+            if (criteria.uppercase) strength++;
+            if (criteria.lowercase) strength++;
+            if (criteria.number) strength++;
+            if (criteria.symbol) strength++;
+            if (password.length >= 12) strength++;
+            if (password.length >= 16) strength++;
+
+            // Determine strength level
+            let level = 'weak';
+            let labelText = 'Weak';
+            let scoreText = strength + '/7';
+
+            if (strength >= 6) {
+                level = 'strong';
+                labelText = 'Strong';
+            } else if (strength >= 4) {
+                level = 'medium';
+                labelText = 'Medium';
+            }
+
+            // Update UI
+            bar.className = 'strength-bar ' + level;
+            label.className = 'strength-text ' + level;
+            label.textContent = labelText;
+            score.textContent = scoreText;
+        }
+
+        // Admin Panel Functions
+        async function openAdminPanel() {
+            const res = await fetch('/api/users');
+            if (res.status === 403) {
+                showToast('Admin access required', 'error');
+                return;
+            }
+
+            const users = await res.json();
+            const currentUser = localStorage.getItem('username') || sessionUsername;
+
+            const usersListHtml = users.map(user => `
+                <div class="health-item" style="padding: 15px 10px; border-bottom: 1px solid var(--border-color);">
+                    <div class="health-item-info">
+                        <div class="health-item-site">
+                            ${escapeHtml(user.username)}
+                            ${user.is_admin ? '<span style="font-size: 11px; color: var(--accent-cyan); margin-left: 8px;">(Admin)</span>' : ''}
+                        </div>
+                        <div class="health-item-reason">Joined: ${new Date(user.created_at).toLocaleDateString()}</div>
+                    </div>
+                    ${!user.is_admin && user.username !== currentUser ? `
+                        <button class="btn btn-danger" onclick="deleteUser(${user.id}, '${escapeHtml(user.username)}')">Delete</button>
+                    ` : ''}
+                </div>
+            `).join('');
+
+            document.getElementById('usersList').innerHTML = usersListHtml;
+            document.getElementById('adminModal').classList.add('active');
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.remove('active');
+        }
+
+        async function deleteUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+            const data = await res.json();
+
+            if (res.ok) {
+                showToast('User deleted successfully', 'success');
+                openAdminPanel(); // Refresh list
+            } else {
+                showToast(data.error || 'Failed to delete user', 'error');
             }
         }
 

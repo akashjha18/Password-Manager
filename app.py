@@ -23,9 +23,8 @@ from logging.handlers import RotatingFileHandler
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
-# Database and key files
+# Database and log files
 DB_FILE = "vault.db"
-KEY_FILE = ".key"
 LOG_FILE = "audit.log"
 
 # Session timeout (15 minutes)
@@ -156,41 +155,43 @@ def derive_key(password: str, salt: bytes) -> bytes:
     return kdf.derive(password.encode())
 
 
-def init_encryption():
-    global encryption_key
-    if os.path.exists(KEY_FILE):
-        with open(KEY_FILE, "rb") as f:
-            data = json.load(f)
-            salt = base64.b64decode(data["salt"])
-            return salt, data["hash"], data.get("2fa_secret")
-    return None, None, None
+def get_user_by_username(username: str):
+    """Get user from database by username"""
+    db = get_db()
+    cursor = db.execute("SELECT * FROM users WHERE username = ?", (username,))
+    return cursor.fetchone()
 
 
-def verify_password(password: str, salt: bytes, stored_hash: str) -> bool:
-    key = derive_key(password, salt)
-    hasher = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    hasher.update(key)
-    computed_hash = base64.b64encode(hasher.finalize()).decode()
-    return computed_hash == stored_hash
-
-
-def setup_encryption(password: str):
+def create_user(username: str, password: str, is_admin: bool = False):
+    """Create a new user in the database"""
     salt = os.urandom(16)
     key = derive_key(password, salt)
     hasher = hashes.Hash(hashes.SHA256(), backend=default_backend())
     hasher.update(key)
     password_hash = base64.b64encode(hasher.finalize()).decode()
-
     totp_secret = pyotp.random_base32()
 
-    with open(KEY_FILE, "w") as f:
-        json.dump({
-            "salt": base64.b64encode(salt).decode(),
-            "hash": password_hash,
-            "2fa_secret": totp_secret,
-            "2fa_enabled": False
-        }, f)
+    db = get_db()
+    db.execute(
+        "INSERT INTO users (username, password_hash, salt, is_admin, two_fa_secret) VALUES (?, ?, ?, ?, ?)",
+        (username, password_hash, base64.b64encode(salt).decode(), is_admin, totp_secret)
+    )
+    db.commit()
+
     return key, totp_secret
+
+
+def verify_user_password(password: str, salt_b64: str, stored_hash: str) -> bytes:
+    """Verify user password and return derived key"""
+    salt = base64.b64decode(salt_b64)
+    key = derive_key(password, salt)
+    hasher = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    hasher.update(key)
+    computed_hash = base64.b64encode(hasher.finalize()).decode()
+
+    if computed_hash == stored_hash:
+        return key
+    return None
 
 
 def encrypt_password(password: str, key: bytes) -> str:
@@ -287,7 +288,7 @@ def log_audit(action: str, details: str = "", ip: str = None):
     try:
         db = get_db()
         db.execute(
-            "INSERT INTO audit_log (action, user, details, ip_address) VALUES (?, ?, ?, ?)",
+            "INSERT INTO audit_log (action, username, details, ip_address) VALUES (?, ?, ?, ?)",
             (action, session.get('username', 'system'), details, ip or request.remote_addr)
         )
         db.commit()
@@ -353,8 +354,8 @@ def login():
         log_audit("LOGIN_FAILED", f"Unknown user: {username}")
         return jsonify({'error': 'Invalid credentials'}), 401
 
-    salt = base64.b64decode(user['salt'])
-    if not verify_password(password, salt, user['password_hash']):
+    derived_key = verify_user_password(password, user['salt'], user['password_hash'])
+    if not derived_key:
         log_audit("LOGIN_FAILED", f"Invalid password for user: {username}")
         return jsonify({'error': 'Invalid credentials'}), 401
 
@@ -367,14 +368,15 @@ def login():
             log_audit("LOGIN_FAILED", f"Invalid 2FA code for user: {username}")
             return jsonify({'error': 'Invalid 2FA code'}), 401
 
-    encryption_key = derive_key(password, salt)
+    encryption_key = derived_key
     session['logged_in'] = True
     session['last_activity'] = datetime.now().isoformat()
     session['username'] = username
     session['user_id'] = user['id']
+    session['is_admin'] = user['is_admin']
 
     log_audit("LOGIN_SUCCESS", f"User {username} logged in")
-    return jsonify({'success': True, 'username': username, '2fa_enabled': user['two_fa_enabled']})
+    return jsonify({'success': True, 'username': username, 'is_admin': user['is_admin'], '2fa_enabled': user['two_fa_enabled']})
 
 
 @app.route('/api/register', methods=['POST'])
@@ -410,11 +412,14 @@ def register():
 
     totp_secret = pyotp.random_base32()
 
+    # Check if this is the first user (make them admin)
+    is_first_user = db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+
     # Create user in database
     db.execute('''
-        INSERT INTO users (username, password_hash, salt, two_fa_secret, two_fa_enabled)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (username, password_hash, base64.b64encode(salt).decode(), totp_secret, False))
+        INSERT INTO users (username, password_hash, salt, is_admin, two_fa_secret, two_fa_enabled)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (username, password_hash, base64.b64encode(salt).decode(), is_first_user, totp_secret, False))
     db.commit()
 
     encryption_key = key
@@ -422,6 +427,7 @@ def register():
     session['last_activity'] = datetime.now().isoformat()
     session['username'] = username
     session['user_id'] = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    session['is_admin'] = is_first_user
 
     # Generate QR code for 2FA setup
     qr_uri = pyotp.totp.TOTP(totp_secret).provisioning_uri(
@@ -450,17 +456,15 @@ def verify_2fa():
     data = request.json
     totp_code = data.get('totp_code', '')
 
-    with open(KEY_FILE, "r") as f:
-        key_data = json.load(f)
-
-    totp_secret = key_data.get('2fa_secret')
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    totp_secret = user['two_fa_secret']
     totp = pyotp.TOTP(totp_secret)
 
     if totp.verify(totp_code):
-        with open(KEY_FILE, "w") as f:
-            key_data['2fa_enabled'] = True
-            json.dump(key_data, f)
-        log_audit("2FA_ENABLED", "Two-factor authentication enabled")
+        db.execute("UPDATE users SET two_fa_enabled = TRUE WHERE id = ?", (session['user_id'],))
+        db.commit()
+        log_audit("2FA_ENABLED", f"Two-factor authentication enabled by user {session['username']}")
         return jsonify({'success': True})
 
     return jsonify({'error': 'Invalid 2FA code'}), 400
@@ -472,17 +476,16 @@ def disable_2fa():
     data = request.json
     password = data.get('password', '')
 
-    salt, stored_hash, _ = init_encryption()
-    if not verify_password(password, salt, stored_hash):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+
+    if not verify_user_password(password, user['salt'], user['password_hash']):
         return jsonify({'error': 'Invalid password'}), 401
 
-    with open(KEY_FILE, "r") as f:
-        key_data = json.load(f)
-    key_data['2fa_enabled'] = False
-    with open(KEY_FILE, "w") as f:
-        json.dump(key_data, f)
+    db.execute("UPDATE users SET two_fa_enabled = FALSE WHERE id = ?", (session['user_id'],))
+    db.commit()
 
-    log_audit("2FA_DISABLED", "Two-factor authentication disabled")
+    log_audit("2FA_DISABLED", f"Two-factor authentication disabled by user {session['username']}")
     return jsonify({'success': True})
 
 
@@ -791,10 +794,15 @@ def add_note():
 def manage_note(note_id):
     db = get_db()
     if request.method == 'DELETE':
-        db.execute("DELETE FROM secure_notes WHERE id = ?", (note_id,))
+        db.execute("DELETE FROM secure_notes WHERE id = ? AND user_id = ?", (note_id, session['user_id']))
         db.commit()
-        log_audit("NOTE_DELETED", f"Deleted note #{note_id}")
+        log_audit("NOTE_DELETED", f"Deleted note #{note_id} by user {session['username']}")
         return jsonify({'success': True})
+
+    # Verify ownership first
+    cursor = db.execute("SELECT * FROM secure_notes WHERE id = ? AND user_id = ?", (note_id, session['user_id']))
+    if not cursor.fetchone():
+        return jsonify({'error': 'Not found'}), 404
 
     data = request.json
     if 'title' in data and 'content' in data:
@@ -804,6 +812,7 @@ def manage_note(note_id):
             (data['title'], encrypted_content, data.get('category', 'personal'), datetime.now().isoformat(), note_id)
         )
         db.commit()
+        log_audit("NOTE_UPDATED", f"Updated note #{note_id} by user {session['username']}")
         return jsonify({'success': True})
 
     return jsonify({'error': 'Invalid request'}), 400
@@ -824,8 +833,8 @@ def export_data():
 
     db = get_db()
 
-    # Export passwords
-    cursor = db.execute("SELECT site, username, password, category, notes FROM passwords")
+    # Export passwords (user-specific)
+    cursor = db.execute("SELECT site, username, password, category, notes FROM passwords WHERE user_id = ?", (session['user_id'],))
     passwords = []
     for row in cursor.fetchall():
         passwords.append({
@@ -836,8 +845,8 @@ def export_data():
             'notes': row['notes'] or ''
         })
 
-    # Export notes
-    cursor = db.execute("SELECT title, content, category FROM secure_notes")
+    # Export notes (user-specific)
+    cursor = db.execute("SELECT title, content, category FROM secure_notes WHERE user_id = ?", (session['user_id'],))
     notes = []
     for row in cursor.fetchall():
         notes.append({
@@ -881,8 +890,8 @@ def import_data():
         for pwd in imported.get('passwords', []):
             encrypted = encrypt_password(pwd['password'], encryption_key)
             db.execute(
-                "INSERT INTO passwords (site, username, password, category, notes) VALUES (?, ?, ?, ?, ?)",
-                (pwd['site'], pwd['username'], encrypted, pwd.get('category', 'uncategorized'), pwd.get('notes', ''))
+                "INSERT INTO passwords (user_id, site, username, password, category, notes) VALUES (?, ?, ?, ?, ?, ?)",
+                (session['user_id'], pwd['site'], pwd['username'], encrypted, pwd.get('category', 'uncategorized'), pwd.get('notes', ''))
             )
             imported_count += 1
 
@@ -897,16 +906,63 @@ def import_data():
 @login_required
 def get_categories():
     db = get_db()
-    cursor = db.execute("SELECT DISTINCT category FROM passwords UNION SELECT DISTINCT category FROM secure_notes")
+    cursor = db.execute("""
+        SELECT DISTINCT category FROM passwords WHERE user_id = ?
+        UNION
+        SELECT DISTINCT category FROM secure_notes WHERE user_id = ?
+    """, (session['user_id'], session['user_id']))
     categories = [row[0] for row in cursor.fetchall()]
     return jsonify(categories)
+
+
+@app.route('/api/users', methods=['GET'])
+@login_required
+def get_users():
+    """Get all users (admin only)"""
+    db = get_db()
+    user = db.execute("SELECT is_admin FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+
+    if not user['is_admin']:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    cursor = db.execute("SELECT id, username, is_admin, created_at FROM users ORDER BY created_at")
+    users = [dict(row) for row in cursor.fetchall()]
+    return jsonify(users)
+
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+@login_required
+def delete_user(user_id):
+    """Delete a user (admin only)"""
+    db = get_db()
+
+    # Verify admin status
+    current_user = db.execute("SELECT is_admin FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    if not current_user['is_admin']:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    # Cannot delete yourself
+    if user_id == session['user_id']:
+        return jsonify({'error': 'Cannot delete your own account'}), 400
+
+    # Get username for audit
+    user_to_delete = db.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user_to_delete:
+        return jsonify({'error': 'User not found'}), 404
+
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    db.commit()
+
+    log_audit("USER_DELETED", f"User {user_to_delete['username']} deleted by admin {session['username']}")
+    return jsonify({'success': True})
 
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
     global encryption_key
+    if session.get('username'):
+        log_audit("LOGOUT", f"User {session.get('username')} logged out")
     encryption_key = None
-    log_audit("LOGOUT", "User logged out")
     session.clear()
     return jsonify({'success': True})
 
@@ -922,13 +978,15 @@ def change_master_password():
     if len(new_password) < 8:
         return jsonify({'error': 'New password must be at least 8 characters'}), 400
 
-    salt, stored_hash, totp_secret = init_encryption()
-    if not verify_password(current_password, salt, stored_hash):
+    # Get current user from database
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+
+    if not verify_user_password(current_password, user['salt'], user['password_hash']):
         return jsonify({'error': 'Current password is incorrect'}), 401
 
-    # Load all existing passwords
-    db = get_db()
-    cursor = db.execute("SELECT * FROM passwords")
+    # Load all existing passwords for this user
+    cursor = db.execute("SELECT * FROM passwords WHERE user_id = ?", (session['user_id'],))
     entries = cursor.fetchall()
 
     decrypted_passwords = []
@@ -938,6 +996,15 @@ def change_master_password():
             'password': decrypt_password(entry['password'], encryption_key)
         })
 
+    # Load secure notes for this user
+    cursor = db.execute("SELECT id, content FROM secure_notes WHERE user_id = ?", (session['user_id'],))
+    secure_notes = []
+    for row in cursor.fetchall():
+        secure_notes.append({
+            'id': row['id'],
+            'content': decrypt_password(row['content'], encryption_key)
+        })
+
     # Generate new salt and hash
     new_salt = os.urandom(16)
     new_key = derive_key(new_password, new_salt)
@@ -945,18 +1012,11 @@ def change_master_password():
     hasher.update(new_key)
     new_hash = base64.b64encode(hasher.finalize()).decode()
 
-    # Preserve 2FA settings
-    with open(KEY_FILE, "r") as f:
-        old_key_data = json.load(f)
-
-    # Save new key file
-    with open(KEY_FILE, "w") as f:
-        json.dump({
-            "salt": base64.b64encode(new_salt).decode(),
-            "hash": new_hash,
-            "2fa_secret": old_key_data.get("2fa_secret"),
-            "2fa_enabled": old_key_data.get("2fa_enabled", False)
-        }, f)
+    # Update user in database
+    db.execute(
+        "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?",
+        (new_hash, base64.b64encode(new_salt).decode(), session['user_id'])
+    )
 
     # Re-encrypt all passwords with new key
     for p in decrypted_passwords:
@@ -964,16 +1024,14 @@ def change_master_password():
         db.execute("UPDATE passwords SET password = ? WHERE id = ?", (new_encrypted, p['id']))
 
     # Also update secure notes
-    cursor = db.execute("SELECT id, content FROM secure_notes")
-    for row in cursor.fetchall():
-        decrypted_note = decrypt_password(row['content'], encryption_key)
-        new_encrypted_note = encrypt_password(decrypted_note, new_key)
-        db.execute("UPDATE secure_notes SET content = ? WHERE id = ?", (new_encrypted_note, row['id']))
+    for note in secure_notes:
+        new_encrypted_note = encrypt_password(note['content'], new_key)
+        db.execute("UPDATE secure_notes SET content = ? WHERE id = ?", (new_encrypted_note, note['id']))
 
     db.commit()
     encryption_key = new_key
 
-    log_audit("MASTER_PASSWORD_CHANGED", "Master password was changed")
+    log_audit("MASTER_PASSWORD_CHANGED", f"Master password changed by user {session['username']}")
     return jsonify({'success': True})
 
 
