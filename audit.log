@@ -9,3 +9,9 @@
 2026-04-07 23:02:56,919 - INFO - AUDIT: LOGIN_SUCCESS - User logged in by vault_user
 2026-04-08 22:35:32,369 - INFO - AUDIT: LOGIN_SUCCESS - User logged in by vault_user
 2026-04-28 22:05:01,723 - INFO - AUDIT: USER_REGISTERED - New user registered: testuser by testuser
+2026-04-28 22:05:34,712 - INFO - AUDIT: LOGIN_SUCCESS - User testuser logged in by testuser
+2026-04-29 12:49:05,114 - INFO - AUDIT: USER_REGISTERED - New user registered: ram18 by ram18
+2026-04-29 12:49:54,235 - INFO - AUDIT: LOGOUT - User ram18 logged out by ram18
+2026-04-29 12:51:34,511 - INFO - AUDIT: LOGIN_SUCCESS - User testuser logged in by testuser
+2026-04-29 12:54:37,126 - INFO - AUDIT: LOGIN_SUCCESS - User testuser logged in by testuser
+2026-04-29 12:58:20,722 - INFO - AUDIT: LOGIN_SUCCESS - User testuser logged in by testuser
