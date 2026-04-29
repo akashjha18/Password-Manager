@@ -1102,11 +1102,15 @@
             const res = await fetch('/api/init');
             const data = await res.json();
             document.getElementById('authSubtitle').textContent = data.exists
-                ? 'Enter your master password to unlock'
+                ? 'Enter your credentials to unlock'
                 : 'Create a master password to secure your vault';
             document.getElementById('authBtn').textContent = data.exists
-                ? 'Unlock Vault'
+                ? 'Login'
                 : 'Create Vault';
+            // Show username field if vault exists (login mode)
+            if (data.exists) {
+                document.getElementById('usernameInput').style.display = 'block';
+            }
         }
 
         let isRegisterMode = false;
@@ -1121,7 +1125,7 @@
             }
 
             const endpoint = isRegisterMode ? '/api/register' : '/api/login';
-            const payload = isRegisterMode ? { username, password } : { password };
+            const payload = isRegisterMode ? { username, password } : { username, password };
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -1161,7 +1165,7 @@
             document.getElementById('authBtn').textContent = isRegisterMode ? 'Create Account' : 'Login';
             document.getElementById('authToggleBtn').textContent = isRegisterMode ? 'Back to Login' : 'Create Account';
             document.getElementById('authToggleText').textContent = isRegisterMode ? 'Already have an account?' : "Don't have an account?";
-            document.getElementById('usernameInput').style.display = isRegisterMode ? 'block' : 'none';
+            document.getElementById('usernameInput').style.display = 'block';
             document.getElementById('authError').textContent = '';
         }
 
